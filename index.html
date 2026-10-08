@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Sign quote calculator</title>
+<style>
+:root{--bg:#f6f7f7;--panel:#fff;--ink:#1b1f22;--mute:#5d686f;--line:#d5dadd;--quote:#78fbff;--quote-ink:#0a1a1c;--accent:#0a7f86;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#14181a;--panel:#1d2326;--ink:#e8eced;--mute:#9aa6ab;--line:#334046;--quote:#0f4a4e;--quote-ink:#d9fdff;--accent:#5fe3ea}}
+:root[data-theme="dark"]{--bg:#14181a;--panel:#1d2326;--ink:#e8eced;--mute:#9aa6ab;--line:#334046;--quote:#0f4a4e;--quote-ink:#d9fdff;--accent:#5fe3ea}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.4 "Helvetica Neue",Arial,sans-serif}
+main{max-width:1100px;margin:0 auto;padding:20px 16px 48px}
+h1{font-size:22px;margin:0 0 16px}
+.rates{display:flex;gap:16px;flex-wrap:wrap;background:var(--panel);border:1px solid var(--line);padding:12px 16px;margin-bottom:16px}
+label{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--mute)}
+input{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);padding:6px 8px;border-radius:3px;width:100%}
+input:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.rates input{width:110px}
+.scroll{overflow-x:auto;background:var(--panel);border:1px solid var(--line)}
+table{border-collapse:collapse;width:100%;min-width:860px}
+th{font-size:13px;text-align:left;color:var(--mute);font-weight:600;padding:8px;border-bottom:2px solid var(--line)}
+td{padding:6px 8px;border-bottom:1px solid var(--line)}
+td.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+td input.n{width:80px}
+td input.f{min-width:130px}
+td input.m{min-width:260px}
+tfoot td{font-weight:700;border-bottom:0}
+button{font:inherit;cursor:pointer;border:1px solid var(--line);background:var(--panel);color:var(--ink);padding:7px 12px;border-radius:3px}
+button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) button.primary{color:#06292b}}
+:root[data-theme="dark"] button.primary{color:#06292b}
+.x{padding:4px 9px;color:var(--mute)}
+.bar{display:flex;gap:8px;margin:12px 0 24px}
+.quote{background:var(--quote);color:var(--quote-ink);padding:14px 16px;border-left:6px solid #000}
+.quote h2{margin:0 0 8px;font-size:16px}
+.quote p{margin:0 0 4px;word-break:break-word}
+.qhead{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.qhead h2{margin:0}
+.qhead button{background:transparent;color:inherit;border-color:currentColor}
+</style>
+</head>
+<body>
+<main>
+<h1>Sign quote calculator</h1>
+
+<div class="rates">
+  <label>Material price per sqft ($)<input id="priceRate" type="number" step="any" min="0" value="0"></label>
+  <label>Install price per sqft ($)<input id="installRate" type="number" step="any" min="0" value="0"></label>
+  <label>Tax note<input id="taxNote" type="text" value="+ taxes" style="width:130px"></label>
+</div>
+
+<div class="scroll">
+<table>
+  <thead><tr>
+    <th>Artwork file name</th><th>Width (in)</th><th>Height (in)</th><th>QTY</th>
+    <th class="num">Sqft</th><th>Material</th><th class="num">Price</th><th class="num">Install</th><th></th>
+  </tr></thead>
+  <tbody id="rows"></tbody>
+  <tfoot><tr><td colspan="4">Totals</td><td class="num" id="tSqft"></td><td></td><td class="num" id="tPrice"></td><td class="num" id="tInstall"></td><td></td></tr></tfoot>
+</table>
+</div>
+
+<div class="bar"><button class="primary" id="add">Add row</button></div>
+
+<div class="quote">
+  <div class="qhead"><h2>QUOTING</h2><button id="copy">Copy quote</button></div>
+  <div id="lines"></div>
+</div>
+</main>
+
+<script>
+(function(){
+  var KEY="quote-calc-v2";
+  var DEFAULT_MAT="Material description";
+  var state={price:0,install:0,tax:"+ taxes",rows:[{file:"artwork1.pdf",w:0,h:0,qty:0,mat:DEFAULT_MAT}]};
+  try{var s=localStorage.getItem(KEY);if(s){var p=JSON.parse(s);if(p&&p.rows)state=p;}}catch(e){}
+
+  var $=function(id){return document.getElementById(id)};
+  var rowsEl=$("rows"),linesEl=$("lines");
+  function save(){try{localStorage.setItem(KEY,JSON.stringify(state))}catch(e){}}
+  function num(v){var n=parseFloat(v);return isFinite(n)?n:0}
+  function money(n){return "$"+n.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})}
+  function money0(n){return Math.abs(n-Math.round(n))<0.005?"$"+Math.round(n).toLocaleString("en-US"):money(n)}
+  function sq(n){return n.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})}
+  function esc(t){return String(t).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})}
+
+  function calc(r){
+    var sqft=num(r.w)*num(r.h)/144*num(r.qty);
+    return {sqft:sqft,price:sqft*num(state.price),install:sqft*num(state.install)};
+  }
+  function line(r,c){
+    return num(r.qty)+"pcs - "+r.file+" - "+num(r.w)+'"x'+num(r.h)+'" - '+r.mat+" - "+money0(c.price)+" "+state.tax;
+  }
+
+  function build(){
+    rowsEl.innerHTML="";
+    state.rows.forEach(function(r,i){
+      var tr=document.createElement("tr");
+      tr.innerHTML=
+        '<td><input class="f" data-k="file" value="'+esc(r.file)+'"></td>'+
+        '<td><input class="n" data-k="w" type="number" step="any" min="0" value="'+esc(r.w)+'"></td>'+
+        '<td><input class="n" data-k="h" type="number" step="any" min="0" value="'+esc(r.h)+'"></td>'+
+        '<td><input class="n" data-k="qty" type="number" step="1" min="0" value="'+esc(r.qty)+'"></td>'+
+        '<td class="num" data-o="sqft"></td>'+
+        '<td><input class="m" data-k="mat" value="'+esc(r.mat)+'"></td>'+
+        '<td class="num" data-o="price"></td><td class="num" data-o="install"></td>'+
+        '<td><button class="x" aria-label="Remove row" data-del="'+i+'">✕</button></td>';
+      tr.addEventListener("input",function(e){var k=e.target.getAttribute("data-k");if(k){r[k]=e.target.value;update();}});
+      tr.querySelector("[data-del]").addEventListener("click",function(){state.rows.splice(i,1);build();update();});
+      rowsEl.appendChild(tr);
+    });
+  }
+
+  function update(){
+    var ts=0,tp=0,ti=0,html="";
+    Array.prototype.forEach.call(rowsEl.children,function(tr,i){
+      var r=state.rows[i],c=calc(r);
+      tr.querySelector('[data-o="sqft"]').textContent=sq(c.sqft);
+      tr.querySelector('[data-o="price"]').textContent=money(c.price);
+      tr.querySelector('[data-o="install"]').textContent=money(c.install);
+      ts+=c.sqft;tp+=c.price;ti+=c.install;
+      html+="<p>"+esc(line(r,c))+"</p>";
+    });
+    $("tSqft").textContent=sq(ts);$("tPrice").textContent=money(tp);$("tInstall").textContent=money(ti);
+    linesEl.innerHTML=html||"<p>Add a row to start a quote.</p>";
+    save();
+  }
+
+  $("priceRate").value=state.price;$("installRate").value=state.install;$("taxNote").value=state.tax;
+  $("priceRate").addEventListener("input",function(e){state.price=e.target.value;update()});
+  $("installRate").addEventListener("input",function(e){state.install=e.target.value;update()});
+  $("taxNote").addEventListener("input",function(e){state.tax=e.target.value;update()});
+  $("add").addEventListener("click",function(){
+    var last=state.rows[state.rows.length-1];
+    state.rows.push({file:"",w:last?last.w:0,h:last?last.h:0,qty:0,mat:last?last.mat:DEFAULT_MAT});
+    build();update();
+    var inputs=rowsEl.querySelectorAll('input[data-k="file"]');inputs[inputs.length-1].focus();
+  });
+  $("copy").addEventListener("click",function(){
+    var text=state.rows.map(function(r){return line(r,calc(r))}).join("\n");
+    var b=$("copy");
+    function done(){b.textContent="Copied";setTimeout(function(){b.textContent="Copy quote"},1500)}
+    try{navigator.clipboard.writeText(text).then(done,function(){fallback(text,done)})}catch(e){fallback(text,done)}
+  });
+  function fallback(text,done){
+    var t=document.createElement("textarea");t.value=text;document.body.appendChild(t);t.select();
+    try{document.execCommand("copy");done()}catch(e){}
+    document.body.removeChild(t);
+  }
+
+  build();update();
+})();
+</script>
+</body>
+</html>
