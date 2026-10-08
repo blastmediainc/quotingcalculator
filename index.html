@@ -3,46 +3,51 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Blast Quoting Calculator</title>
+<title>Blast Quoting Spaceship</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700&display=swap" rel="stylesheet">
 <style>
-:root{--bg:#f6f7f7;--panel:#fff;--ink:#1b1f22;--mute:#5d686f;--line:#d5dadd;--quote:#78fbff;--quote-ink:#0a1a1c;--accent:#0a7f86;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#14181a;--panel:#1d2326;--ink:#e8eced;--mute:#9aa6ab;--line:#334046;--quote:#0f4a4e;--quote-ink:#d9fdff;--accent:#5fe3ea}}
-:root[data-theme="dark"]{--bg:#14181a;--panel:#1d2326;--ink:#e8eced;--mute:#9aa6ab;--line:#334046;--quote:#0f4a4e;--quote-ink:#d9fdff;--accent:#5fe3ea}
+:root{--bg:#eef2f4;--panel:#fff;--ink:#14202a;--mute:#66757f;--line:#e1e7ea;--field:#f6f8f9;--quote:#7ef7fc;--quote-ink:#06272b;--accent:#0b8a92;--accent-ink:#fff;--shadow:0 1px 2px rgba(20,32,42,.06),0 4px 14px rgba(20,32,42,.05);box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0e1316;--panel:#171e22;--ink:#e9eff1;--mute:#8f9fa6;--line:#27333a;--field:#1e272c;--quote:#12474c;--quote-ink:#dcfdff;--accent:#5fe3ea;--accent-ink:#06292b;--shadow:0 1px 2px rgba(0,0,0,.3)}}
+:root[data-theme="dark"]{--bg:#0e1316;--panel:#171e22;--ink:#e9eff1;--mute:#8f9fa6;--line:#27333a;--field:#1e272c;--quote:#12474c;--quote-ink:#dcfdff;--accent:#5fe3ea;--accent-ink:#06292b;--shadow:0 1px 2px rgba(0,0,0,.3)}
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.4 "Helvetica Neue",Arial,sans-serif}
-main{max-width:1100px;margin:0 auto;padding:20px 16px 48px}
-h1{font-size:22px;margin:0 0 16px}
-.rates{display:flex;gap:16px;flex-wrap:wrap;background:var(--panel);border:1px solid var(--line);padding:12px 16px;margin-bottom:16px}
-label{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--mute)}
-input{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);padding:6px 8px;border-radius:3px;width:100%}
-input:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
-.rates input{width:110px}
-.scroll{overflow-x:auto;background:var(--panel);border:1px solid var(--line)}
-table{border-collapse:collapse;width:100%;min-width:860px}
-th{font-size:13px;text-align:left;color:var(--mute);font-weight:600;padding:8px;border-bottom:2px solid var(--line)}
-td{padding:6px 8px;border-bottom:1px solid var(--line)}
-td.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
-td input.n{width:80px}
-td input.f{min-width:130px}
-td input.m{min-width:260px}
-tfoot td{font-weight:700;border-bottom:0}
-button{font:inherit;cursor:pointer;border:1px solid var(--line);background:var(--panel);color:var(--ink);padding:7px 12px;border-radius:3px}
-button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) button.primary{color:#06292b}}
-:root[data-theme="dark"] button.primary{color:#06292b}
-.x{padding:4px 9px;color:var(--mute)}
-.bar{display:flex;gap:8px;margin:12px 0 24px}
-.quote{background:var(--quote);color:var(--quote-ink);padding:14px 16px;border-left:6px solid #000}
-.quote h2{margin:0 0 8px;font-size:16px}
-.quote p{margin:0 0 4px;word-break:break-word}
-.qhead{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
-.qhead h2{margin:0}
-.qhead button{background:transparent;color:inherit;border-color:currentColor}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 Lato,"Helvetica Neue",Arial,sans-serif;-webkit-font-smoothing:antialiased}
+main{max-width:1100px;margin:0 auto;padding:32px 16px 56px}
+h1{font-size:26px;font-weight:700;letter-spacing:-.02em;margin:0 0 20px}
+.rates{display:flex;gap:16px;flex-wrap:wrap;background:var(--panel);border-radius:12px;box-shadow:var(--shadow);padding:16px 20px;margin-bottom:16px}
+label{display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:500;color:var(--mute)}
+input{font:inherit;color:var(--ink);background:var(--field);border:1px solid var(--line);padding:8px 10px;border-radius:8px;width:100%;transition:border-color .15s,box-shadow .15s}
+input:hover{border-color:var(--mute)}
+input:focus-visible,button:focus-visible{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 28%,transparent)}
+.rates input{width:130px}
+.scroll{overflow-x:auto;background:var(--panel);border-radius:12px;box-shadow:var(--shadow)}
+table{border-collapse:collapse;width:100%;min-width:900px}
+th{font-size:12.5px;text-align:left;color:var(--mute);font-weight:600;padding:12px 10px;border-bottom:1px solid var(--line);background:var(--panel)}
+th.num{text-align:right}
+td{padding:8px 10px;border-bottom:1px solid var(--line)}
+td.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap;font-weight:500}
+td input.n{width:84px}
+td input.f{min-width:140px}
+td input.m{min-width:270px}
+tfoot td{font-weight:700;border-bottom:0;background:var(--field)}
+button{font:inherit;font-weight:500;cursor:pointer;border:1px solid var(--line);background:var(--panel);color:var(--ink);padding:8px 14px;border-radius:8px;transition:background .15s,border-color .15s}
+button:hover{border-color:var(--mute)}
+button.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+button.primary:hover{filter:brightness(1.08)}
+.x{padding:4px 10px;color:var(--mute);border-color:transparent;background:transparent}
+.x:hover{color:var(--ink);background:var(--field);border-color:transparent}
+.bar{display:flex;gap:8px;margin:14px 0 28px;flex-wrap:wrap}
+.quote{background:transparent;color:var(--ink);padding:16px 22px;border-radius:12px;border:2px solid var(--accent)}
+.quote p{margin:0 0 6px;word-break:break-word}
+.qhead{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.qhead h2{margin:0;font-size:15px;font-weight:700;letter-spacing:.04em;color:var(--accent)}
+.qhead button{background:transparent;color:var(--accent);border-color:var(--accent)}
+.qhead button:hover{background:var(--field)}
 </style>
 </head>
 <body>
 <main>
-<h1>Sign quote calculator</h1>
+<h1>Blast Quoting Spaceship</h1>
 
 <div class="rates">
   <label>Material price per sqft ($)<input id="priceRate" type="number" step="any" min="0" value="0"></label>
@@ -61,7 +66,7 @@ button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
 </table>
 </div>
 
-<div class="bar"><button class="primary" id="add">Add row</button></div>
+<div class="bar"><button class="primary" id="add">Add row</button><button id="reset">Start over</button></div>
 
 <div class="quote">
   <div class="qhead"><h2>QUOTING</h2><button id="copy">Copy quote</button></div>
@@ -73,7 +78,8 @@ button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
 (function(){
   var KEY="quote-calc-v2";
   var DEFAULT_MAT="Material description";
-  var state={price:0,install:0,tax:"+ taxes",rows:[{file:"artwork1.pdf",w:0,h:0,qty:0,mat:DEFAULT_MAT}]};
+  function fresh(){return {price:0,install:0,tax:"+ taxes",rows:[{file:"artwork1.pdf",w:0,h:0,qty:0,mat:DEFAULT_MAT}]}}
+  var state=fresh();
   try{var s=localStorage.getItem(KEY);if(s){var p=JSON.parse(s);if(p&&p.rows)state=p;}}catch(e){}
 
   var $=function(id){return document.getElementById(id)};
@@ -136,6 +142,19 @@ button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
     state.rows.push({file:"",w:last?last.w:0,h:last?last.h:0,qty:0,mat:last?last.mat:DEFAULT_MAT});
     build();update();
     var inputs=rowsEl.querySelectorAll('input[data-k="file"]');inputs[inputs.length-1].focus();
+  });
+  var resetTimer=null;
+  $("reset").addEventListener("click",function(){
+    var b=$("reset");
+    if(!resetTimer){
+      b.textContent="Click again to clear everything";
+      resetTimer=setTimeout(function(){b.textContent="Start over";resetTimer=null},4000);
+      return;
+    }
+    clearTimeout(resetTimer);resetTimer=null;b.textContent="Start over";
+    state=fresh();
+    $("priceRate").value=state.price;$("installRate").value=state.install;$("taxNote").value=state.tax;
+    build();update();
   });
   $("copy").addEventListener("click",function(){
     var text=state.rows.map(function(r){return line(r,calc(r))}).join("\n");
