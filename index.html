@@ -117,7 +117,9 @@ button.primary:hover{filter:brightness(1.08)}
 
   function build(){
     rowsEl.innerHTML="";
-    state.rows.forEach(function(r,i){
+    state.rows.forEach(function(r,i){addRowEl(r,i)});
+  }
+  function addRowEl(r,i){
       var tr=document.createElement("tr");
       tr.innerHTML=
         '<td><input class="f" data-k="file" value="'+esc(r.file)+'"></td>'+
@@ -131,21 +133,28 @@ button.primary:hover{filter:brightness(1.08)}
       tr.addEventListener("input",function(e){var k=e.target.getAttribute("data-k");if(k){r[k]=e.target.value;update();}});
       tr.querySelector("[data-del]").addEventListener("click",function(){state.rows.splice(i,1);build();update();});
       rowsEl.appendChild(tr);
-    });
+  }
+  function isBlank(r){return num(r.w)===0&&num(r.h)===0&&num(r.qty)===0}
+  function ensureBlankRow(){
+    var last=state.rows[state.rows.length-1];
+    if(last&&!(num(last.w)>0&&num(last.h)>0&&num(last.qty)>0))return;
+    var r={file:"",w:0,h:0,qty:0,mat:last?last.mat:DEFAULT_MAT};
+    state.rows.push(r);addRowEl(r,state.rows.length-1);
   }
 
   function update(){
     var ts=0,tp=0,ti=0,html="";
+    ensureBlankRow();
     Array.prototype.forEach.call(rowsEl.children,function(tr,i){
       var r=state.rows[i],c=calc(r);
       tr.querySelector('[data-o="sqft"]').textContent=sq(c.sqft);
       tr.querySelector('[data-o="price"]').textContent=money(c.price);
       tr.querySelector('[data-o="install"]').textContent=money(c.install);
       ts+=c.sqft;tp+=c.price;ti+=c.install;
-      html+="<p>"+esc(line(r,c))+"</p>";
+      if(!isBlank(r))html+="<p>"+esc(line(r,c))+"</p>";
     });
     $("tSqft").textContent=sq(ts);$("tPrice").textContent=money(tp);$("tInstall").textContent=money(ti);
-    linesEl.innerHTML=html||"<p>Add a row to start a quote.</p>";
+    linesEl.innerHTML=html||"<p>Fill in a row to start a quote.</p>";
     renderSheet();
     save();
   }
@@ -174,7 +183,7 @@ button.primary:hover{filter:brightness(1.08)}
     build();update();
   });
   $("copy").addEventListener("click",function(){
-    var text=state.rows.map(function(r){return line(r,calc(r))}).join("\n");
+    var text=state.rows.filter(function(r){return !isBlank(r)}).map(function(r){return line(r,calc(r))}).join("\n");
     var b=$("copy");
     function done(){b.textContent="Copied";setTimeout(function(){b.textContent="Copy quote"},1500)}
     try{navigator.clipboard.writeText(text).then(done,function(){fallback(text,done)})}catch(e){fallback(text,done)}
@@ -187,7 +196,7 @@ button.primary:hover{filter:brightness(1.08)}
 
   function sheetData(){
     var head=["Artwork File Name","Width (inches)","Height (inches)","QTY","Sqft","Material"];
-    var body=state.rows.map(function(r){
+    var body=state.rows.filter(function(r){return !isBlank(r)}).map(function(r){
       var c=calc(r);
       return [r.file,String(num(r.w)),String(num(r.h)),String(num(r.qty)),sq(c.sqft),r.mat];
     });
