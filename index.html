@@ -45,9 +45,12 @@ button.primary:hover{filter:brightness(1.08)}
 .bar{display:flex;gap:8px;margin:14px 0 0;flex-wrap:wrap}
 .quote{background:var(--panel);color:var(--ink);padding:14px 20px 10px;border-radius:12px;box-shadow:var(--shadow)}
 .quote p{margin:0 0 6px;word-break:break-word}
-.qhead{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
-.qhead h2{margin:0;font-size:15px;font-weight:700;letter-spacing:.04em;color:var(--accent-ink);background:var(--accent);padding:7px 16px;border-radius:8px}
-.qhead button{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.card{background:var(--panel);border-radius:12px;box-shadow:var(--shadow);overflow:hidden}
+.card .rates,.card .scroll,.card .quote{background:none;box-shadow:none;border-radius:0}
+.card .rates{margin:0;border-bottom:1px solid var(--line)}
+.qhead{display:flex;justify-content:space-between;align-items:center;gap:12px;background:var(--accent);color:var(--accent-ink);padding:9px 20px;min-height:48px}
+.qhead h2{margin:0;font-size:15px;font-weight:700;letter-spacing:.04em;color:var(--accent-ink)}
+.qhead button{background:#14202a;color:#fff;border-color:transparent;padding:6px 14px}
 .qhead button:hover{filter:brightness(1.08)}
 .sheetwrap{margin-top:28px}
 .sheetwrap table{min-width:700px}
@@ -69,6 +72,7 @@ button.primary:hover{filter:brightness(1.08)}
 </div>
 <input type="file" id="picker" multiple hidden>
 
+<div class="card">
 <div class="qhead"><h2>MATERIAL AND PRICING CALCULATOR</h2></div>
 
 <div class="rates">
@@ -87,15 +91,16 @@ button.primary:hover{filter:brightness(1.08)}
   <tfoot><tr><td colspan="4">Totals</td><td class="num" id="tSqft"></td><td></td><td class="num" id="tPrice"></td><td class="num" id="tInstall"></td><td></td></tr></tfoot>
 </table>
 </div>
+</div>
 
 <div class="bar"><button class="primary" id="add">Add row</button><button id="reset">Start over</button></div>
 
-<div class="sheetwrap quotewrap">
+<div class="card sheetwrap quotewrap">
   <div class="qhead"><h2>QUOTING</h2><button id="copy">Copy quote</button></div>
   <div class="quote"><div id="lines"></div></div>
 </div>
 
-<div class="sheetwrap">
+<div class="card sheetwrap">
   <div class="qhead"><h2>DOCKET INFO</h2><button id="copyTable">Copy table</button></div>
   <div class="scroll"><table id="sheet"><thead></thead><tbody></tbody></table></div>
 </div>
