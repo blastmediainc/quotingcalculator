@@ -62,6 +62,9 @@ button.primary:hover{filter:brightness(1.08)}
 .drop small{display:block;font-size:12.5px;margin-top:2px}
 .drop:hover,.drop.over{border-color:var(--accent);background:var(--field);color:var(--ink)}
 .drop:focus-visible{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 28%,transparent)}
+.qright{display:flex;align-items:center;justify-content:flex-end;gap:16px;flex-wrap:wrap}
+.qhead .toggle{flex-direction:row;align-items:center;gap:8px;font-size:14px;font-weight:500;color:var(--accent-ink);cursor:pointer}
+.qhead .toggle input{width:18px;height:18px;margin:0;accent-color:#14202a;cursor:pointer}
 </style>
 </head>
 <body>
@@ -98,7 +101,7 @@ button.primary:hover{filter:brightness(1.08)}
 <div class="bar"><button class="primary" id="add">Add row</button><button id="reset">Start over</button></div>
 
 <div class="card sheetwrap quotewrap">
-  <div class="qhead"><h2>QUOTING</h2><button id="copy">Copy quote</button></div>
+  <div class="qhead"><h2>QUOTING</h2><div class="qright"><label class="toggle"><input type="checkbox" id="incInstall"><span>Include install cost</span></label><button id="copy">Copy quote</button></div></div>
   <div class="quote"><div id="lines"></div></div>
 </div>
 
@@ -112,7 +115,7 @@ button.primary:hover{filter:brightness(1.08)}
 (function(){
   var KEY="quote-calc-v2";
   var DEFAULT_MAT="Material description";
-  function fresh(){return {price:0,install:0,tax:"+ taxes",rows:[{file:"artwork1.pdf",w:0,h:0,qty:0,mat:DEFAULT_MAT}]}}
+  function fresh(){return {price:0,install:0,inst:false,tax:"+ taxes",rows:[{file:"artwork1.pdf",w:0,h:0,qty:0,mat:DEFAULT_MAT}]}}
   var state=fresh();
   try{var s=localStorage.getItem(KEY);if(s){var p=JSON.parse(s);if(p&&p.rows)state=p;}}catch(e){}
 
@@ -130,7 +133,7 @@ button.primary:hover{filter:brightness(1.08)}
     return {sqft:sqft,price:sqft*num(state.price),install:sqft*num(state.install)};
   }
   function line(r,c){
-    return num(r.qty)+"pcs - "+r.file+" - "+num(r.w)+'"x'+num(r.h)+'" - '+r.mat+" - "+money0(c.price)+" "+state.tax;
+    return num(r.qty)+"pcs - "+r.file+" - "+num(r.w)+'"x'+num(r.h)+'" - '+r.mat+" - "+money0(c.price+(state.inst?c.install:0))+" "+state.tax;
   }
 
   function build(){
@@ -182,6 +185,8 @@ button.primary:hover{filter:brightness(1.08)}
   }
 
   $("priceRate").value=state.price;$("installRate").value=state.install;$("taxNote").value=state.tax;
+  $("incInstall").checked=!!state.inst;
+  $("incInstall").addEventListener("change",function(e){state.inst=e.target.checked;update()});
   $("priceRate").addEventListener("input",function(e){state.price=e.target.value;update()});
   $("installRate").addEventListener("input",function(e){state.install=e.target.value;update()});
   $("taxNote").addEventListener("input",function(e){state.tax=e.target.value;update()});
@@ -201,7 +206,7 @@ button.primary:hover{filter:brightness(1.08)}
     }
     clearTimeout(resetTimer);resetTimer=null;b.textContent="Start over";
     state=fresh();
-    $("priceRate").value=state.price;$("installRate").value=state.install;$("taxNote").value=state.tax;
+    $("priceRate").value=state.price;$("installRate").value=state.install;$("taxNote").value=state.tax;$("incInstall").checked=false;
     build();update();
   });
   $("copy").addEventListener("click",function(){
