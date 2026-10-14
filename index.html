@@ -73,7 +73,7 @@ button.primary:hover{filter:brightness(1.08)}
 
 <div class="drop" id="drop" tabindex="0" role="button" aria-label="Add files by name">
   Drop files here, or click to choose files
-  <small>Only the file names are used. Nothing is uploaded or stored.</small>
+  <small>PDFs will auto-populate width and height. Files stay on your computer; nothing is uploaded.</small>
 </div>
 <input type="file" id="picker" multiple hidden>
 
@@ -245,10 +245,140 @@ button.primary:hover{filter:brightness(1.08)}
     function done(){b.textContent="Copied";setTimeout(function(){b.textContent="Copy table"},1500)}
     try{navigator.clipboard.writeText(text).then(done,function(){fallback(text,done)})}catch(e){fallback(text,done)}
   });
-  function addNames(names){
-    if(!names.length)return;
-    var used={},first=-1;
-    names.forEach(function(n){
+  /* ---- PDF size reader: runs in the browser, reads only the first page's size ---- */
+  function pdfScan(t,i){
+    // t[i..i+1] is "<<". Returns {end, flat}: end index of the matching ">>" and the
+    // dictionary text with all nested dictionaries/strings removed (top-level keys only).
+    var d=0,n=Math.min(t.length,i+500000),flat="",k=i;
+    while(k<n){
+      var c=t.charCodeAt(k);
+      if(c===40){
+        var p=1;k++;
+        while(k<n&&p>0){var ch=t.charCodeAt(k);if(ch===92)k++;else if(ch===40)p++;else if(ch===41)p--;k++}
+        continue;
+      }
+      if(c===60&&t.charCodeAt(k+1)===60){d++;k+=2;if(d===1)flat+="<<";continue}
+      if(c===60){var e=t.indexOf(">",k);k=e<0?n:e+1;continue}
+      if(c===62&&t.charCodeAt(k+1)===62){d--;k+=2;if(d===0)return {end:k,flat:flat+">>"};continue}
+      if(d===1)flat+=t.charAt(k);
+      k++;
+    }
+    return null;
+  }
+  async function pdfInflate(u8){
+    var ds=new DecompressionStream("deflate");
+    var w=ds.writable.getWriter();
+    w.write(u8).catch(function(){});w.close().catch(function(){});
+    return new Uint8Array(await new Response(ds.readable).arrayBuffer());
+  }
+  async function pdfSize(file){
+    if(!file||file.size>300*1024*1024)return null;
+    var buf=new Uint8Array(await file.arrayBuffer());
+    var dec=new TextDecoder("latin1");
+    var text=dec.decode(buf);
+    var objs={},order=[],streams=[];
+    function keep(id,flat){
+      if(/\/Type\s*\/Pages?(?![A-Za-z])/.test(flat)){if(!(id in objs))order.push(id);objs[id]=flat}
+    }
+    var re=/(\d+)\s+(\d+)\s+obj\s*<</g,m;
+    while((m=re.exec(text))){
+      var start=m.index+m[0].length-2;
+      var r=pdfScan(text,start);
+      if(!r)continue;
+      re.lastIndex=r.end;
+      if(/\/Type\s*\/ObjStm(?![A-Za-z])/.test(r.flat)){
+        streams.push({flat:r.flat,end:r.end});
+      }else{
+        keep(+m[1],r.flat);
+      }
+    }
+    for(var s=0;s<streams.length;s++){
+      try{
+        var st=streams[s],f=st.flat;
+        var N=+(/\/N\s+(\d+)/.exec(f)||[])[1],First=+(/\/First\s+(\d+)/.exec(f)||[])[1];
+        if(!N||!First)continue;
+        var sidx=text.indexOf("stream",st.end);
+        if(sidx<0)continue;
+        var ds=sidx+6;
+        if(text.charCodeAt(ds)===13)ds++;
+        if(text.charCodeAt(ds)===10)ds++;
+        var lm=/\/Length\s+(\d+)(?!\s+\d+\s+R)/.exec(f),de;
+        if(lm)de=ds+(+lm[1]);
+        else{de=text.indexOf("endstream",ds);while(de>ds&&(text.charCodeAt(de-1)===10||text.charCodeAt(de-1)===13))de--}
+        var data=buf.subarray(ds,de);
+        var out=/\/FlateDecode/.test(f)?await pdfInflate(data):data;
+        var dt=dec.decode(out);
+        var nums=dt.slice(0,First).trim().split(/\s+/).map(Number);
+        for(var q=0;q<N;q++){
+          var oid=nums[2*q],off=nums[2*q+1],nxt=q+1<N?nums[2*q+3]:dt.length-First;
+          var piece=dt.slice(First+off,First+nxt);
+          var at=piece.indexOf("<<");
+          if(at<0||piece.slice(0,at).trim()!=="")continue;
+          var rr=pdfScan(piece,at);
+          if(rr)keep(oid,rr.flat);
+        }
+      }catch(e){}
+    }
+    function box(flat,key){
+      var mm=new RegExp("/"+key+"\\s*\\[([^\\]]*)\\]").exec(flat);
+      if(!mm)return null;
+      var v=mm[1].trim().split(/\s+/).map(parseFloat);
+      return v.length===4&&v.every(isFinite)?v:null;
+    }
+    function firstPage(id,inh,depth){
+      var flat=objs[id];
+      if(!flat||depth>40)return null;
+      var cur={media:box(flat,"MediaBox")||inh.media,crop:box(flat,"CropBox")||inh.crop,rot:inh.rot,uu:inh.uu};
+      var rm=/\/Rotate\s+(-?\d+)/.exec(flat);if(rm)cur.rot=+rm[1];
+      var um=/\/UserUnit\s+([\d.]+)/.exec(flat);if(um)cur.uu=+um[1];
+      if(/\/Type\s*\/Page(?![A-Za-z])/.test(flat))return cur;
+      var km=/\/Kids\s*\[([^\]]*)\]/.exec(flat);
+      if(!km)return null;
+      var kre=/(\d+)\s+\d+\s+R/g,k;
+      while((k=kre.exec(km[1]))){
+        var res=firstPage(+k[1],cur,depth+1);
+        if(res)return res;
+      }
+      return null;
+    }
+    var page=null,blank={media:null,crop:null,rot:0,uu:1};
+    for(var a=0;a<order.length&&!page;a++){
+      var f2=objs[order[a]];
+      if(/\/Type\s*\/Pages(?![A-Za-z])/.test(f2)&&!/\/Parent\s+\d+/.test(f2))page=firstPage(order[a],blank,0);
+    }
+    if(!page){
+      for(var b=0;b<order.length&&!page;b++){
+        if(/\/Type\s*\/Page(?![A-Za-z])/.test(objs[order[b]]))page=firstPage(order[b],blank,0);
+      }
+    }
+    if(!page)return null;
+    var bx=page.crop||page.media;
+    if(!bx)return null;
+    var w=Math.abs(bx[2]-bx[0])*page.uu/72,h=Math.abs(bx[3]-bx[1])*page.uu/72;
+    var rot=((page.rot%360)+360)%360;
+    if(rot===90||rot===270){var tmp=w;w=h;h=tmp}
+    if(!(w>0&&h>0))return null;
+    return {w:Math.round(w*100)/100,h:Math.round(h*100)/100};
+  }
+  var DROP_NOTE="PDFs will auto-populate width and height. Files stay on your computer; nothing is uploaded.";
+  var pending=0,failed=0,noteTimer=null;
+  function setNote(t){var el=$("drop").querySelector("small");if(el)el.textContent=t}
+  function isPdf(f){return /\.pdf$/i.test(f.name)||f.type==="application/pdf"}
+  function fillSize(r,d){
+    var i=state.rows.indexOf(r);
+    if(i<0||!d)return false;
+    if(num(r.w)===0&&num(r.h)===0){
+      r.w=d.w;r.h=d.h;
+      var tr=rowsEl.children[i];
+      if(tr){tr.querySelector('[data-k="w"]').value=d.w;tr.querySelector('[data-k="h"]').value=d.h}
+      update();
+    }
+    return true;
+  }
+  function addFiles(files){
+    if(!files.length)return;
+    var used={},first=-1,rowFor=[];
+    files.forEach(function(f,k){
       var idx=-1;
       for(var i=0;i<state.rows.length;i++){
         var r=state.rows[i];
@@ -259,17 +389,29 @@ button.primary:hover{filter:brightness(1.08)}
         state.rows.push({file:"",w:0,h:0,qty:0,mat:last?last.mat:DEFAULT_MAT});
         idx=state.rows.length-1;
       }
-      state.rows[idx].file=n;used[idx]=true;if(first<0)first=idx;
+      state.rows[idx].file=f.name;used[idx]=true;rowFor[k]=state.rows[idx];if(first<0)first=idx;
     });
     build();update();
-    var w=rowsEl.children[first]&&rowsEl.children[first].querySelector('[data-k="w"]');
-    if(w)w.focus();
+    var inp=rowsEl.children[first]&&rowsEl.children[first].querySelector(isPdf(files[0])?'[data-k="qty"]':'[data-k="w"]');
+    if(inp)inp.focus();
+    files.forEach(function(f,k){
+      if(!isPdf(f))return;
+      pending++;clearTimeout(noteTimer);setNote("Reading PDF sizes...");
+      pdfSize(f).then(function(d){if(!fillSize(rowFor[k],d))failed++},function(){failed++}).then(function(){
+        pending--;
+        if(pending>0)return;
+        if(failed>0){
+          setNote("Couldn't read the size of "+failed+" PDF"+(failed>1?"s":"")+". Enter those by hand.");
+          failed=0;noteTimer=setTimeout(function(){setNote(DROP_NOTE)},7000);
+        }else setNote(DROP_NOTE);
+      });
+    });
   }
-  function namesFrom(list){return Array.prototype.map.call(list||[],function(f){return f.name})}
+  function filesFrom(list){return Array.prototype.slice.call(list||[])}
   var drop=$("drop"),picker=$("picker");
   drop.addEventListener("click",function(){picker.click()});
   drop.addEventListener("keydown",function(e){if(e.key==="Enter"||e.key===" "){e.preventDefault();picker.click()}});
-  picker.addEventListener("change",function(){addNames(namesFrom(picker.files));picker.value=""});
+  picker.addEventListener("change",function(){var fl=filesFrom(picker.files);picker.value="";addFiles(fl)});
   function hasFiles(e){return e.dataTransfer&&Array.prototype.indexOf.call(e.dataTransfer.types||[],"Files")>=0}
   window.addEventListener("dragenter",function(e){if(hasFiles(e)){e.preventDefault();drop.classList.add("over")}});
   window.addEventListener("dragover",function(e){if(hasFiles(e)){e.preventDefault();drop.classList.add("over")}});
@@ -277,7 +419,7 @@ button.primary:hover{filter:brightness(1.08)}
   window.addEventListener("drop",function(e){
     if(!hasFiles(e))return;
     e.preventDefault();drop.classList.remove("over");
-    addNames(namesFrom(e.dataTransfer.files));
+    addFiles(filesFrom(e.dataTransfer.files));
   });
   function resizeAll(){Array.prototype.forEach.call(rowsEl.querySelectorAll("textarea"),autosize)}
   window.addEventListener("load",resizeAll);
