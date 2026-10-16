@@ -133,7 +133,7 @@ button.primary:hover{filter:brightness(1.08)}
     return {sqft:sqft,price:sqft*num(state.price),install:sqft*num(state.install)};
   }
   function line(r,c){
-    return num(r.qty)+"pcs - "+r.file+" - "+num(r.w)+'"x'+num(r.h)+'" - '+r.mat+" - "+money0(c.price+(state.inst?c.install:0))+" "+state.tax;
+    return num(r.qty)+"pcs - "+r.file+" - "+num(r.w)+'"x'+num(r.h)+'" - '+r.mat+" - "+money0(c.price+(state.inst?c.install:0))+(num(r.qty)>1?" ("+money0((c.price+(state.inst?c.install:0))/num(r.qty))+" ea)":"")+" "+state.tax;
   }
 
   function build(){
